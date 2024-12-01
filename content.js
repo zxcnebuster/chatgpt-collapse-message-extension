@@ -1,110 +1,178 @@
-function getRandomColor() {
-  const randomInt = Math.floor(Math.random() * 16777216);
-  const hexColor = `#${randomInt.toString(16).padStart(6, "0")}`;
-  return hexColor;
+//refer to article as to a message in the chat as current chatgpt.com has
+// console.log("init content");
+function collapseMessage(message) {
+  message.classList.add("message-collapsed");
+  message.classList.remove("message-expanded");
+}
+function expandMessage(message) {
+  message.classList.add("message-expanded");
+  message.classList.remove("message-collapsed");
 }
 
-function processArticlePair(userArticle, assistantArticle) {
-  if (
-    userArticle.dataset.paired === "true" ||
-    assistantArticle.dataset.paired === "true"
-  ) {
-    return; // Skip already processed pairs
+function addToggleCollapseButton(userRequest, assistantResponse) {
+  if (userRequest.querySelector(".collapse-state-toggle-button")) {
+    return;
   }
+  if (assistantResponse.querySelector(".collapse-state-toggle-button")) {
+    return;
+  }
+  const toggleButtonUser = document.createElement("button");
+  toggleButtonUser.className = "collapse-state-toggle-button";
+  userRequest.appendChild(toggleButtonUser);
+  toggleButtonUser.addEventListener("click", function () {
+    const isCollapsed = userRequest.classList.contains("message-collapsed");
 
-  const randomColor = getRandomColor();
+    if (isCollapsed) {
+      expandMessage(userRequest);
+    } else {
+      collapseMessage(userRequest);
+    }
+  });
 
-  userArticle.style.backgroundColor = randomColor;
-  assistantArticle.style.backgroundColor = randomColor;
+  const toggleButtonAssistant = document.createElement("button");
+  toggleButtonAssistant.className = "collapse-state-toggle-button";
+  assistantResponse.appendChild(toggleButtonAssistant);
+  toggleButtonAssistant.addEventListener("click", function () {
+    const isCollapsed =
+      assistantResponse.classList.contains("message-collapsed");
 
-  userArticle.dataset.paired = "true";
-  assistantArticle.dataset.paired = "true";
-}
-
-function processAllArticlePairs() {
-  // Select all <h5> elements with class 'sr-only' and exact text 'You said:'
-  const h5Elements = document.querySelectorAll("h5.sr-only");
-
-  h5Elements.forEach((h5) => {
-    // Check if the h5 contains the exact text 'You said:'
-    if (h5.textContent.trim() === "You said:") {
-      // Find the parent <article> of this <h5>
-      const userArticle = h5.closest("article");
-
-      if (userArticle) {
-        // Find the next sibling <article> (assistant's response)
-        let assistantArticle = userArticle.nextElementSibling;
-        // In case non-article elements involved in between (warnings, review prompts)
-        while (
-          assistantArticle &&
-          assistantArticle.tagName.toLowerCase() !== "article"
-        ) {
-          assistantArticle = assistantArticle.nextElementSibling;
-        }
-
-        if (assistantArticle) {
-          processArticlePair(userArticle, assistantArticle);
-        }
-      }
+    if (isCollapsed) {
+      expandMessage(assistantResponse);
+    } else {
+      collapseMessage(assistantResponse);
     }
   });
 }
 
-function initialize() {
-  // Initial processing of existing article pairs
-  processAllArticlePairs();
+function initCollapsing() {
+  const h5Elements = document.querySelectorAll("h5.sr-only"); // user reqests
+  const userRequests = []; //hold user requests that have corresponding output
+  h5Elements.forEach((h5) => {
+    if (h5.textContent.trim() === "You said:") {
+      const userRequest = h5.closest("article");
+      if (userRequest && !userRequests.includes(userRequest)) {
+        userRequests.push(userRequest);
+      }
+    }
+  });
+  userRequests.forEach((userRequest, index) => {
+    // fetch assistant response for corresponding user request
+    let assistantResponse = userRequest.nextElementSibling;
+    // skip non-article siblings
+    while (
+      assistantResponse &&
+      assistantResponse.tagName.toLowerCase() !== "article"
+    ) {
+      assistantResponse = assistantResponse.nextElementSibling;
+    }
+    if (assistantResponse) {
+      if (index < userRequests.length - 1) {
+        collapseMessage(userRequest);
+        collapseMessage(assistantResponse);
+        addToggleCollapseButton(userRequest, assistantResponse);
+      }
+    }
+  });
+}
+let messageNumber = 0;
+function handleNewNodes(addedNodes) {
+  let numberMessages = document.querySelectorAll("article").length;
+  if (numberMessages == messageNumber) {
+    return;
+  } else {
+    messageNumber = numberMessages;
+  }
+  addedNodes.forEach((node) => {
+    // console.log("mutating");
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
 
-  // Set up a MutationObserver to watch for new articles added to the DOM
-  const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-      mutation.addedNodes.forEach((node) => {
-        if (node.nodeType === Node.ELEMENT_NODE) {
-          if (node.tagName.toLowerCase() === "article") {
-            const h5 = node.querySelector("h5.sr-only");
-            if (h5 && h5.textContent.trim() === "You said:") {
-              let assistantArticle = node.nextElementSibling;
-
-              while (
-                assistantArticle &&
-                assistantArticle.tagName.toLowerCase() !== "article"
-              ) {
-                assistantArticle = assistantArticle.nextElementSibling;
-              }
-
-              if (assistantArticle) {
-                processArticlePair(node, assistantArticle);
-              }
+    if (node.matches && node.matches("article")) {
+      const h5 = node.querySelector("h5.sr-only"); // user reqests
+      if (h5 && h5.textContent.trim() === "You said:") {
+        let assistantResponse = node.nextElementSibling; // find corresponding response if there is one
+        // if next sibling is not article search until article found or none next sibling
+        while (
+          assistantResponse &&
+          assistantResponse.tagName.toLowerCase() !== "article"
+        ) {
+          assistantResponse = assistantResponse.nextElementSibling;
+        }
+        if (assistantResponse) {
+          const totalUserRequest =
+            document.querySelectorAll("h5.sr-only").length;
+          const shouldCollapse = totalUserRequest > 1;
+          if (shouldCollapse) {
+            collapseMessage(node);
+            collapseMessage(assistantResponse);
+          }
+          addToggleCollapseButton(node, assistantResponse);
+        }
+      }
+    } else {
+      //inapplicable case?
+      const h5Elements = node.querySelectorAll("h5.sr-only");
+      h5Elements.forEach((h5) => {
+        // console.log("mutating multiple");
+        // console.log("iterated through sr-only");
+        if (h5 && h5.textContent.trim() === "You said:") {
+          const userRequest = h5.closest("article");
+          //   console.log("sibling identified");
+          if (
+            userRequest &&
+            !(
+              userRequest.classList.contains("message-collapsed") ||
+              userRequest.classList.contains("message-expanded")
+            )
+          ) {
+            // console.log("proceeding with sibling");
+            // console.log(userRequest);
+            let assistantResponse = userRequest.nextElementSibling;
+            // console.log(assistantResponse);
+            // console.log(assistantResponse.tagName.toLowerCase());
+            while (
+              assistantResponse &&
+              assistantResponse.tagName.toLowerCase() !== "article"
+            ) {
+              //   console.log("looping siblings");
+              assistantResponse = assistantResponse.nextElementSibling;
             }
-          } else {
-            // If a non-<article> node is added, it might contain multiple <article> elements
-            const nestedH5Elements = node.querySelectorAll("h5.sr-only");
-            nestedH5Elements.forEach((h5) => {
-              if (h5.textContent.trim() === "You said:") {
-                const userArticle = h5.closest("article");
+            if (assistantResponse) {
+              //   console.log("check should collapse");
+              const totalUserRequest =
+                document.querySelectorAll("h5.sr-only").length;
+              const shouldCollapse = totalUserRequest > 1;
+              if (shouldCollapse) {
+                // console.log("collapsing");
 
-                if (userArticle) {
-                  let assistantArticle = userArticle.nextElementSibling;
-
-                  while (
-                    assistantArticle &&
-                    assistantArticle.tagName.toLowerCase() !== "article"
-                  ) {
-                    assistantArticle = assistantArticle.nextElementSibling;
-                  }
-
-                  if (assistantArticle) {
-                    processArticlePair(userArticle, assistantArticle);
-                  }
+                if (assistantResponse.nextElementSibling !== null) {
+                  collapseMessage(userRequest);
+                  collapseMessage(assistantResponse);
                 }
               }
-            });
+              addToggleCollapseButton(node, assistantResponse);
+            }
           }
         }
       });
+    }
+  });
+}
+//new content (request/responses must be monitored)
+function setupMutationObserver() {
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.addedNodes.length > 0) {
+        handleNewNodes(mutation.addedNodes);
+      }
     });
   });
-
-  observer.observe(document.body, { childList: true, subtree: true });
+  const articlesWrapper = document.querySelector('[role="presentation"]');
+  observer.observe(articlesWrapper, { childList: true, subtree: true });
+  return observer;
 }
 
-initialize();
+function initialise() {
+  initCollapsing();
+  const observer = setupMutationObserver();
+}
+initialise();
