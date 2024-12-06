@@ -1,4 +1,4 @@
-.article-toggle-button {
+/* .article-toggle-button {
   background-color: #007bff;
   color: white;
   border: none;
@@ -18,21 +18,25 @@
 .assistant-collapsed {
   padding: 0;
   margin: 0;
-}
-.assistant-collapsed .agent-turn {
-  height: 200px;
-  overflow: hidden;
-  -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent);
-  mask-image: linear-gradient(to bottom, black 0%, transparent);
+} */
+/* .message-collapsed {
+  max-height: 200px;
+
   transition: height 0.3s ease-out, padding 0.3s ease-out, margin 0.3s ease-out;
 }
+.message-collapsed.large-message div div:nth-child(2) {
+  max-height: 200px;
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent);
+  mask-image: linear-gradient(to bottom, black 0%, transparent);
+  transition: all 0.3s ease;
+}
 
-.assistant-expanded {
-  overflow: hidden;
+.message-expanded {
+  max-height: none;
   transition: max-height 0.3s ease-in, padding 0.3s ease-in, margin 0.3s ease-in;
   padding: 10px;
   margin-top: 10px;
-}
+} */
 
 article {
   transition: all 0.3s ease;
